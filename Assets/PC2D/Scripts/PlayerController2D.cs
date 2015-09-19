@@ -48,6 +48,11 @@ public class PlayerController2D : MonoBehaviour
             FreedomStateRestore(_motor);
         }
 
+        if (Input.GetButtonDown(PC2D.Input.DASH)) {
+            Debug.Log("Dash!!!");
+            _motor.ForceDash();
+        }
+
         // Jump?
         // If you want to jump in ladders, leave it here, otherwise move it down
         if (Input.GetButtonDown(PC2D.Input.JUMP))

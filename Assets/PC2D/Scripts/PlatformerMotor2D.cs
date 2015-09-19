@@ -4,9 +4,45 @@ using UnityEngine;
 
 public class PlatformerMotor2D : ColliderMotor2d {
 
+    /// <summary>
+    /// The velocity of the motor. This should be queried instead of the rigidbody's velocity. Setting this during a dash doesn't
+    /// have any meaning.
+    /// </summary>
+    public Vector2 velocity
+    {
+        get
+        {
+            if (motorState == MotorState.Dashing)
+            {
+                return _dashing.dashDir * GetDashSpeed();
+            }
+
+            return _velocity;
+        }
+        set
+        {
+            _velocity = value;
+        }
+    }
+
     //
-    // Jumps
+    // Jump Properties
     //
+
+    /// <summary>
+    /// Delegate to attach to when the motor jumps (ALL JUMPS!).
+    /// </summary>
+    public Action onJump;
+
+    /// <summary>
+    /// Delegate to attach to when the motor air jumps (called before onJump).
+    /// </summary>
+    public Action onAirJump;
+
+    /// <summary>
+    /// Delegate to attach to when the motor walls jumps (called before onJump). The vector passed is the normal of the wall.
+    /// </summary>
+    public Action<Vector2> onWallJump;
 
     /// <summary>
     /// If jumpingHeld is set to true then the motor will jump further. Set to false if jumping isn't 'held'.
@@ -84,6 +120,10 @@ public class PlatformerMotor2D : ColliderMotor2d {
     private JumpState _jumping = new JumpState();
     private float _currentWallJumpDegree;
     private Vector2 _wallJumpVector;
+
+    //
+    // Jump Methods
+    //
 
     /// <summary>
     /// Call this to have the GameObject try to jump, once called it will be handled in the FixedUpdate tick. The y axis is
@@ -315,8 +355,273 @@ public class PlatformerMotor2D : ColliderMotor2d {
     }
 
     //
-    // Jumps override
+    // Dashing Properties
     //
+
+    /// <summary>
+    /// Delegate to attach to when the motor dashes.
+    /// </summary>
+    public Action onDash;
+
+    /// <summary>
+    /// Delegate to attach to when the motor's dash ends.
+    /// </summary>
+    public Action onDashEnd;
+
+    /// <summary>
+    /// Is dashing allowed?
+    /// </summary>
+    public bool enableDashes = true;
+
+    /// <summary>
+    /// How far the motor will dash.
+    /// </summary>
+    public float dashDistance = 3;
+
+    /// <summary>
+    /// How long the dash lasts in seconds.
+    /// </summary>
+    public float dashDuration = 0.2f;
+
+    /// <summary>
+    /// When the motor will be allowed to dash again after dashing. The cooldown begins at the end of a dash.
+    /// </summary>
+    public float dashCooldown = 0.76f;
+
+    /// <summary>
+    /// The easing function used during the dash. Pick 'Linear' for just a set speed.
+    /// </summary>
+    public EasingFunctions.Functions dashEasingFunction = EasingFunctions.Functions.EaseOutQuad;
+
+    /// <summary>
+    /// Delay (in seconds) before gravity is turned back on after a dash.
+    /// </summary>
+    public float endDashNoGravityDuration = 0.1f;
+
+
+    // The function is cached to avoid unnecessary memory allocation.
+    private EasingFunctions.EasingFunc _dashFunction;
+    private EasingFunctions.EasingFunc _dashDerivativeFunction;
+    private EasingFunctions.Functions _currentDashEasingFunction;
+
+    // Contains the various dash variables.
+    private class DashState
+    {
+        public bool pressed;
+        public float cooldownFrames;
+        public int dashingFrames;
+        public bool dashWithDirection;
+        public Vector2 dashDir = Vector2.zero;
+        public float distanceCalculated;
+        public float distanceDashed;
+        public bool force;
+        public float gravityEnabledFrames;
+    }
+    private DashState _dashing = new DashState();
+
+    /// <summary>
+    /// Returns the direction of the current dash. If not dashing then returns Vector2.zero.
+    /// </summary>
+    public Vector2 dashDirection
+    {
+        get
+        {
+            if (motorState == MotorState.Dashing)
+            {
+                return _dashing.dashDir;
+            }
+
+            return Vector2.zero;
+        }
+    }
+
+    /// <summary>
+    /// Returns the amount of distance dashed. If not dashing then returns 0.
+    /// </summary>
+    public float distanceDashed
+    {
+        get
+        {
+            if (motorState == MotorState.Dashing)
+            {
+                return _dashing.distanceDashed;
+            }
+
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// This is the distance calculated for dashed. Not be confused with distanceDashed. This doesn't care if the motor has
+    /// hit a wall.
+    /// </summary>
+    public float dashDistanceCalculated
+    {
+        get
+        {
+            if (motorState == MotorState.Dashing)
+            {
+                return _dashing.distanceCalculated;
+            }
+
+            return 0;
+        }
+    }
+
+    //
+    // Dash methods
+    //
+
+    /// <summary>
+    /// If the motor is currently able to dash.
+    /// </summary>
+    public bool canDash
+    {
+        get { return _dashing.cooldownFrames < 0; }
+    }
+
+    /// <summary>
+    /// Reset the cooldown for dash.
+    /// </summary>
+    public void ResetDashCooldown()
+    {
+        _dashing.cooldownFrames = -1;
+    }
+
+    /// <summary>
+    /// Call this to have the motor try to dash, once called it will be handled in the FixedUpdate tick.
+    /// This causes the object to dash along their facing (if left or right for side scrollers).
+    /// </summary>
+    public void Dash()
+    {
+        _dashing.pressed = true;
+        _dashing.dashWithDirection = false;
+    }
+
+    /// <summary>
+    /// Forces the motor to dash regardless if the motor thinks it is valid or not.
+    /// </summary>
+    public void ForceDash()
+    {
+        Dash();
+        _dashing.force = true;
+    }
+
+    /// <summary>
+    /// Send a direction vector to dash allow dashing in a specific direction.
+    /// </summary>
+    /// <param name="dir">The normalized direction of the dash.</param>
+    public void Dash(Vector2 dir)
+    {
+        _dashing.pressed = true;
+        _dashing.dashWithDirection = true;
+        _dashing.dashDir = dir;
+    }
+
+    /// <summary>
+    /// Forces a dash along a specified direction.
+    /// </summary>
+    /// <param name="dir">The normalized direction of the dash.</param>
+    public void ForceDash(Vector2 dir)
+    {
+        Dash(dir);
+        _dashing.force = true;
+    }
+
+    /// <summary>
+    /// Call to end dash immediately.
+    /// </summary>
+    public void EndDash()
+    {
+        // If dashing then end now.
+        if (motorState == MotorState.Dashing)
+        {
+            _dashing.cooldownFrames = GetFrameCount(dashCooldown);
+            _dashing.pressed = false;
+            _dashing.gravityEnabledFrames = GetFrameCount(endDashNoGravityDuration);
+
+            _velocity = _dashing.dashDir * GetDashSpeed();
+
+            if (IsGrounded())
+            {
+                motorState = MotorState.OnGround;
+            }
+            else
+            {
+                motorState = MotorState.Falling;
+            }
+
+            if (onDashEnd != null)
+            {
+                onDashEnd();
+            }
+        }
+    }
+
+    private void SetDashFunctions()
+    {
+        _dashFunction = EasingFunctions.GetEasingFunction(dashEasingFunction);
+        _dashDerivativeFunction = EasingFunctions.GetEasingFunctionDerivative(dashEasingFunction);
+        _currentDashEasingFunction = dashEasingFunction;
+    }
+
+    private void StartDash()
+    {
+        // Set facing now and it won't be set again during dash.
+        SetFacing();
+
+        if (!_dashing.dashWithDirection)
+        {
+            // We dash depending on our direction.
+            _dashing.dashDir = facingLeft ? -Vector2.right : Vector2.right;
+        }
+
+        _dashing.distanceDashed = 0;
+        _dashing.distanceCalculated = 0;
+        _previousLoc = _collider2D.bounds.center;
+
+        // This will begin the dash this frame.
+        _dashing.dashingFrames = GetFrameCount(dashDuration) - 1;
+        _dashing.force = false;
+
+        motorState = MotorState.Dashing;
+
+        if (onDash != null)
+        {
+            onDash();
+        }
+    }
+
+    private float GetDashSpeed()
+    {
+        float normalizedTime = (float)(GetFrameCount(dashDuration) - _dashing.dashingFrames) /
+            GetFrameCount(dashDuration);
+
+        float speed = _dashDerivativeFunction(0, dashDistance, normalizedTime) / dashDuration;
+
+        // Some of the easing functions may result in infinity, we'll uh, lower our expectations and make it maxfloat.
+        // This will almost certainly be clamped.
+        if (float.IsNegativeInfinity(speed))
+        {
+            speed = float.MinValue;
+        }
+        else if (float.IsPositiveInfinity(speed))
+        {
+            speed = float.MaxValue;
+        }
+
+        return speed;
+    }
+
+    //
+    // override
+    //
+
+    protected override void Awake()
+    {
+        SetDashFunctions();
+        base.Awake();
+    }
 
     protected override void Start()
     {
@@ -328,22 +633,55 @@ public class PlatformerMotor2D : ColliderMotor2d {
     protected override void UpdateTimers()
     {
         base.UpdateTimers();
+
+        // jump
         _jumping.jumpGraceFrames--;
         _jumping.timeToldFrames--;
         _jumping.allowExtraFrames--;
+
+        // dashing
+        _dashing.cooldownFrames--;
+        _dashing.gravityEnabledFrames--;
+        _dashing.dashingFrames--;
     }
 
     protected override void ReadjustTimers(float multiplier)
     {
         base.ReadjustTimers(multiplier);
+
+        // jump
         _jumping.jumpGraceFrames = Mathf.RoundToInt(_jumping.jumpGraceFrames * multiplier);
         _jumping.timeToldFrames = Mathf.RoundToInt(_jumping.timeToldFrames * multiplier);
         _jumping.allowExtraFrames = Mathf.RoundToInt(_jumping.allowExtraFrames * multiplier);
+
+        // dashing
+        _dashing.cooldownFrames = Mathf.RoundToInt(_dashing.cooldownFrames * multiplier);
+        _dashing.gravityEnabledFrames = Mathf.RoundToInt(_dashing.gravityEnabledFrames * multiplier);
+        _dashing.dashingFrames = Mathf.RoundToInt(_dashing.dashingFrames * multiplier);
     }
 
-    protected override void UpdateState(bool forceSurroundingsCheck)
+    protected override void UpdateState(bool forceSurroundingsCheck, bool updateSurroundings = true)
     {
-        base.UpdateState(forceSurroundingsCheck);
+        // dashing
+
+        // Since this is in UpdateState, we can end dashing if the timer is at 0.
+        if (motorState == MotorState.Dashing && _dashing.dashingFrames <= 0)
+        {
+            EndDash();
+        }
+
+        UpdateSurroundings(forceSurroundingsCheck);
+
+        if (motorState == MotorState.Dashing)
+        {
+            // Still dashing, nothing else matters.
+            _dashing.distanceDashed += (_collider2D.bounds.center - _previousLoc).magnitude;
+            return;
+        }
+
+        base.UpdateState(forceSurroundingsCheck, false);
+
+        // jump
         // If our state is not in the air then open up the possibility of air jumps (we need to be able to air jump if
         // we walk off an edge so it can't be based of when a jump occurred).
         if (!IsInAir())
@@ -358,7 +696,20 @@ public class PlatformerMotor2D : ColliderMotor2d {
     {
         Debug.Log("Plataformer!");
 
+        // First, are we trying to dash?
+        if (enableDashes &&
+            (_dashing.pressed &&
+            _dashing.cooldownFrames < 0 &&
+            motorState != MotorState.Dashing ||
+            _dashing.force))
+        {
+            StartDash();
+        }
+
+        _dashing.pressed = false;
+
         base.UpdateVelocity();
+
         if (motorState != MotorState.Dashing)
         {
             // Handle jumping.
@@ -366,6 +717,32 @@ public class PlatformerMotor2D : ColliderMotor2d {
         }
     }
 
+    protected override float MoveMotor()
+    {
+        if (motorState == MotorState.Dashing)
+        {
+            float normalizedTime = (float)(GetFrameCount(dashDuration) - _dashing.dashingFrames) /
+                GetFrameCount(dashDuration);
+
+            if (_currentDashEasingFunction != dashEasingFunction)
+            {
+                // This allows the easing function to change during runtime and cut down on unnecessary allocations.
+                SetDashFunctions();
+            }
+
+            float distance = _dashFunction(0, dashDistance, normalizedTime);
+
+            _velocity = _dashing.dashDir * GetDashSpeed();
+            MovePosition(_collider2D.bounds.center + (Vector3)_dashing.dashDir * (distance - _dashing.distanceCalculated));
+            _dashing.distanceCalculated = distance;
+            // Right now dash only moves along a line, doesn't ever need to adjust. We don't need multiple iterations for that.
+            return 0;
+        }
+
+        return base.MoveMotor();
+    }
+
+    // TODO @llafuente remove _jumping.ignoreGravity -> global ignoreGravity
     protected override void HandleFalling()
     {
         if (motorState == MotorState.FreedomState)
@@ -373,6 +750,28 @@ public class PlatformerMotor2D : ColliderMotor2d {
             return;
         }
         else if (!_jumping.ignoreGravity) {
+            if (IsInAir() && !fallFast && _dashing.gravityEnabledFrames < 0) {
+                if (_velocity.y == -fallSpeed)
+                {
+                    return;
+                }
+
+                if (_velocity.y > -fallSpeed)
+                {
+                    _velocity.y = Accelerate(
+                        _velocity.y,
+                        gravityMultiplier * Physics2D.gravity.y,
+                        -fallSpeed);
+                }
+                else
+                {
+                    _velocity.y = Decelerate(
+                        _velocity.y,
+                        Mathf.Abs(gravityMultiplier * Physics.gravity.y),
+                        -fallSpeed);
+                }
+            }
+
             base.HandleFalling();
         }
     }
