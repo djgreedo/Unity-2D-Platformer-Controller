@@ -24,7 +24,7 @@ namespace PC2D
         private State _state;
         private float _originalY;
         private float _time;
-        private PlatformerMotor2D _player;
+        private ColliderMotor2d _player;
 
         private EasingFunctions.EasingFunc _moveUpFunc;
         private EasingFunctions.EasingFunc _moveDownFunc;
@@ -91,7 +91,7 @@ namespace PC2D
             }
         }
 
-        private void PlayerContact(PlatformerMotor2D player)
+        private void PlayerContact(ColliderMotor2d player)
         {
             if (_state == State.None)
             {

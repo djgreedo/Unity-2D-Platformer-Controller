@@ -38,7 +38,7 @@ namespace PC2D
             {
                 _mpMotor.velocity += Physics2D.gravity * gravityScaleWhenFalling * Time.fixedDeltaTime;
             }
-            
+
             if (_state == State.Darken)
             {
                 _darkenTime += Time.fixedDeltaTime;
@@ -51,7 +51,7 @@ namespace PC2D
             }
         }
 
-        private void PlayerContact(PlatformerMotor2D player)
+        private void PlayerContact(ColliderMotor2d player)
         {
             _mpMotor.onPlatformerMotorContact -= PlayerContact;
             _state = State.Darken;

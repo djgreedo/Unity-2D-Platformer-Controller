@@ -14,7 +14,7 @@ public class MovingPlatformMotor2D : MonoBehaviour
             _velocity = value;
         }
     }
-    public System.Action<PlatformerMotor2D> onPlatformerMotorContact;
+    public System.Action<ColliderMotor2d> onPlatformerMotorContact;
 
     private bool _velocitySet;
     private Vector2 _velocity;
