@@ -122,31 +122,6 @@ public class ColliderMotor2d : MonoBehaviour
     public float ladderSpeed = 5f;
 
     /// <summary>
-    /// The height the motor will jump when a jump command is issued.
-    /// </summary>
-    public float jumpHeight = 1.5f;
-
-    /// <summary>
-    /// The extra height the motor will jump if jump is 'held' down.
-    /// </summary>
-    public float extraJumpHeight = 1.5f;
-
-    /// <summary>
-    /// Number of air jumps allowed.
-    /// </summary>
-    public int numOfAirJumps = 1;
-
-    /// <summary>
-    /// The amount of time once the motor has left an environment that a jump will be allowed.
-    /// </summary>
-    public float jumpWindowWhenFalling = 0.2f;
-
-    /// <summary>
-    /// The grace period once the motor is told to jump where it will jump.
-    /// </summary>
-    public float jumpWindowWhenActivated = 0.2f;
-
-    /// <summary>
     /// Should the motor check for any slopes? Set this to false if there are no slopes, the motor will be more efficient.
     /// </summary>
     public bool enableSlopes = true;
@@ -190,22 +165,6 @@ public class ColliderMotor2d : MonoBehaviour
     public float distanceToCheckToStick = 0.4f;
 
     /// <summary>
-    /// If wall jumps are allowed.
-    /// </summary>
-    public bool enableWallJumps = true;
-
-    /// <summary>
-    /// The jump speed multiplier when wall jumping. This is useful to force bigger jumps off of the wall.
-    /// </summary>
-    public float wallJumpMultiplier = 1f;
-
-    /// <summary>
-    /// The angle (degrees) in which the motor will jump away from the wall. 0 is horizontal and 90 is straight up.
-    /// </summary>
-    [Range(0f, 90f)]
-    public float wallJumpAngle = 70;
-
-    /// <summary>
     /// If wall sticking is allowed. A wall sticking is when a motor will 'grab' a wall.
     /// </summary>
     public bool enableWallSticks = true;
@@ -242,11 +201,6 @@ public class ColliderMotor2d : MonoBehaviour
     public float cornerGrabDuration = 1f;
 
     /// <summary>
-    /// The jump speed multiplier when jumping from a corner grab. Useful to forcing bigger jumps.
-    /// </summary>
-    public float cornerJumpMultiplier = 1f;
-
-    /// <summary>
     /// This is the size of the corner check. This can be tweaked with if corner grabs are not working correctly.
     /// </summary>
     public float cornerDistanceCheck = 0.2f;
@@ -257,11 +211,6 @@ public class ColliderMotor2d : MonoBehaviour
     /// </summary>
     [Range(0.1f, 1f)]
     public float normalizedValidWallInteraction = 0.2f;
-
-    /// <summary>
-    /// After a corner or wall jump, this is how longer horizontal input is ignored.
-    /// </summary>
-    public float ignoreMovementAfterJump = 0.2f;
 
     /// <summary>
     /// Cooldown for allowing slides, sticks, and corner grabs. This may be necessary if the motor can slide down a vertical
@@ -275,11 +224,6 @@ public class ColliderMotor2d : MonoBehaviour
     /// </summary>
     [Range(0f, 1f)]
     public float wallInteractionThreshold = 0.5f;
-
-    /// <summary>
-    /// Delegate to attach to when the motor corner jumps (called before onJump).
-    /// </summary>
-    public Action onCornerJump;
 
     /// <summary>
     /// Delegate that notifies that the motor has landed. amountFallen can be queried for distance fallen.

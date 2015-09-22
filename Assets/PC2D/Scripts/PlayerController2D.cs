@@ -49,7 +49,6 @@ public class PlayerController2D : MonoBehaviour
         }
 
         if (Input.GetButtonDown(PC2D.Input.DASH)) {
-            Debug.Log("Dash!!!");
             _motor.ForceDash();
         }
 

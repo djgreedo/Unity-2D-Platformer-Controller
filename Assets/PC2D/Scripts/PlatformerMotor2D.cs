@@ -45,6 +45,62 @@ public class PlatformerMotor2D : ColliderMotor2d {
     public Action<Vector2> onWallJump;
 
     /// <summary>
+    /// Delegate to attach to when the motor corner jumps (called before onJump).
+    /// </summary>
+    public Action onCornerJump;
+
+    /// <summary>
+    /// The height the motor will jump when a jump command is issued.
+    /// </summary>
+    public float jumpHeight = 1.5f;
+
+    /// <summary>
+    /// The extra height the motor will jump if jump is 'held' down.
+    /// </summary>
+    public float extraJumpHeight = 1.5f;
+
+    /// <summary>
+    /// Number of air jumps allowed.
+    /// </summary>
+    public int numOfAirJumps = 1;
+
+    /// <summary>
+    /// The amount of time once the motor has left an environment that a jump will be allowed.
+    /// </summary>
+    public float jumpWindowWhenFalling = 0.2f;
+
+    /// <summary>
+    /// The grace period once the motor is told to jump where it will jump.
+    /// </summary>
+    public float jumpWindowWhenActivated = 0.2f;
+
+    /// <summary>
+    /// If wall jumps are allowed.
+    /// </summary>
+    public bool enableWallJumps = true;
+
+    /// <summary>
+    /// The jump speed multiplier when wall jumping. This is useful to force bigger jumps off of the wall.
+    /// </summary>
+    public float wallJumpMultiplier = 1f;
+
+    /// <summary>
+    /// After a corner or wall jump, this is how longer horizontal input is ignored.
+    /// </summary>
+    public float ignoreMovementAfterJump = 0.2f;
+
+    /// <summary>
+    /// The angle (degrees) in which the motor will jump away from the wall. 0 is horizontal and 90 is straight up.
+    /// </summary>
+    [Range(0f, 90f)]
+    public float wallJumpAngle = 70;
+
+    /// <summary>
+    /// The jump speed multiplier when jumping from a corner grab. Useful to forcing bigger jumps.
+    /// </summary>
+    public float cornerJumpMultiplier = 1f;
+
+    /// <summary>
     /// If jumpingHeld is set to true then the motor will jump further. Set to false if jumping isn't 'held'.
     /// </summary>
     public bool jumpingHeld
