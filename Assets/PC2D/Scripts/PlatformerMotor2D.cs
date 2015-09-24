@@ -3,6 +3,10 @@ using PC2D;
 using UnityEngine;
 
 public class PlatformerMotor2D : ColliderMotor2d {
+    /// <summary>
+    /// Layer of movable Objects
+    /// </summary>
+    public LayerMask movableLayerMask;
 
     /// <summary>
     /// The velocity of the motor. This should be queried instead of the rigidbody's velocity. Setting this during a dash doesn't
@@ -684,6 +688,8 @@ public class PlatformerMotor2D : ColliderMotor2d {
         base.Start();
         _currentWallJumpDegree = wallJumpAngle;
         _wallJumpVector = Quaternion.AngleAxis(wallJumpAngle, Vector3.forward) * Vector3.right;
+
+        _validCollisionLayerMask = staticEnvLayerMask | movingPlatformLayerMask | movableLayerMask;
     }
 
     protected override void UpdateTimers()

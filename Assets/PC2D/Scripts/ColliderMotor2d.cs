@@ -599,7 +599,7 @@ public class ColliderMotor2d : MonoBehaviour
     private bool _originalKinematic;
     private float _timeScale = 1;
     protected Vector3 _previousLoc;
-    private Collider2D[] _collidersUpAgainst = new Collider2D[DIRECTIONS_CHECKED];
+    protected Collider2D[] _collidersUpAgainst = new Collider2D[DIRECTIONS_CHECKED];
     private Vector2[] _collidedNormals = new Vector2[DIRECTIONS_CHECKED];
     private MotorState _prevState;
     private Bounds _prevColliderBounds;
@@ -615,6 +615,7 @@ public class ColliderMotor2d : MonoBehaviour
     private Vector2 _disallowedSlopeNormal;
     private Vector2 _previousMoveDir;
     protected bool _isValidWallInteraction;
+    protected LayerMask _validCollisionLayerMask;
 
     // This is the unconverted motor velocity. This ignores slopes. It is converted into the appropriate vector before
     // moving.
@@ -667,10 +668,10 @@ public class ColliderMotor2d : MonoBehaviour
     private const float INCREASE_ARRAY_SIZE_MULTIPLIER = 2;
 
     private const int DIRECTIONS_CHECKED = 4;
-    private const int DIRECTION_DOWN = 0;
-    private const int DIRECTION_UP = 1;
-    private const int DIRECTION_LEFT = 2;
-    private const int DIRECTION_RIGHT = 3;
+    protected const int DIRECTION_DOWN = 0;
+    protected const int DIRECTION_UP = 1;
+    protected const int DIRECTION_LEFT = 2;
+    protected const int DIRECTION_RIGHT = 3;
 
     private const string FROZEN_SET_WHILE_DISABLED = "PC2D: PlatformerMotor2D.frozen set when motor is disabled, ignoring.";
 
@@ -702,6 +703,8 @@ public class ColliderMotor2d : MonoBehaviour
         SetSlopeDegreeAllowed();
 
         ladderZone = LadderZone.Bottom;
+
+        _validCollisionLayerMask = staticEnvLayerMask | movingPlatformLayerMask;
     }
 
     private void OnEnable()
@@ -1083,7 +1086,6 @@ public class ColliderMotor2d : MonoBehaviour
             UpdateState(true);
         }
         // Phase Two: Update internal representation of velocity
-        Debug.Log("UpdateVelocity");
         UpdateVelocity();
 
         // Phase Three: Move the motor to the new location (and well update falling)
@@ -1129,7 +1131,7 @@ public class ColliderMotor2d : MonoBehaviour
         Bounds checkBounds = _collider2D.bounds;
         checkBounds.extents += Vector3.one * minDistanceFromEnv;
 
-        Collider2D col = Physics2D.OverlapArea(checkBounds.min, checkBounds.max, staticEnvLayerMask | movingPlatformLayerMask);
+        Collider2D col = Physics2D.OverlapArea(checkBounds.min, checkBounds.max, _validCollisionLayerMask);
 
         if (col != null)
         {
@@ -1253,7 +1255,7 @@ public class ColliderMotor2d : MonoBehaviour
 
         min.y = max.y - _collider2D.bounds.size.y * normalizedValidWallInteraction;
 
-        _isValidWallInteraction = Physics2D.OverlapArea(min, max, staticEnvLayerMask | movingPlatformLayerMask) != null;
+        _isValidWallInteraction = Physics2D.OverlapArea(min, max, _validCollisionLayerMask) != null;
     }
 
     virtual protected void UpdateInformationFromMovement()
@@ -1986,7 +1988,7 @@ public class ColliderMotor2d : MonoBehaviour
             return false;
         }
 
-        Collider2D col = Physics2D.OverlapArea(min, max, staticEnvLayerMask | movingPlatformLayerMask);
+        Collider2D col = Physics2D.OverlapArea(min, max, _validCollisionLayerMask);
 
         return (col == null);
     }
@@ -2015,7 +2017,7 @@ public class ColliderMotor2d : MonoBehaviour
             direction,
             useExternalHits ? _hits : _hitsNoDistance,
             distance,
-            staticEnvLayerMask | movingPlatformLayerMask);
+            _validCollisionLayerMask);
 
         if (num > _hits.Length)
         {
@@ -2036,7 +2038,7 @@ public class ColliderMotor2d : MonoBehaviour
             direction,
             useExternalHits ? _hits : _hitsNoDistance,
             distance,
-            staticEnvLayerMask | movingPlatformLayerMask);
+            _validCollisionLayerMask);
 
         return num;
     }
@@ -2052,7 +2054,7 @@ public class ColliderMotor2d : MonoBehaviour
             direction,
             useExternalHits ? _hits : _hitsNoDistance,
             distance,
-            staticEnvLayerMask | movingPlatformLayerMask);
+            _validCollisionLayerMask);
 
         if (num > _hits.Length)
         {
@@ -2071,7 +2073,7 @@ public class ColliderMotor2d : MonoBehaviour
             direction,
             useExternalHits ? _hits : _hitsNoDistance,
             distance,
-            staticEnvLayerMask | movingPlatformLayerMask);
+            _validCollisionLayerMask);
 
         return num;
     }
@@ -2094,10 +2096,10 @@ public class ColliderMotor2d : MonoBehaviour
                     0f,
                     direction,
                     distance,
-                    staticEnvLayerMask | movingPlatformLayerMask);
+                    _validCollisionLayerMask);
             }
 
-            return Physics2D.Raycast(origin, direction, distance, staticEnvLayerMask | movingPlatformLayerMask);
+            return Physics2D.Raycast(origin, direction, distance, _validCollisionLayerMask);
         }
 
         // For one way platforms, things get interesting!
