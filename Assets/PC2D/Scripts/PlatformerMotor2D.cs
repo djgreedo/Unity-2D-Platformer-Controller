@@ -14,6 +14,11 @@ public class PlatformerMotor2D : MonoBehaviour
     public LayerMask staticEnvLayerMask;
 
     /// <summary>
+    /// The static environment check mask. This should only be environment that doesn't move.
+    /// </summary>
+    public LayerMask ignoreRaycastsLayerMask;
+
+    /// <summary>
     /// How far out the motor will check for the environment mask. This value can be tweaked if jump checks are not firing when
     /// wanted.
     /// </summary>
@@ -1025,25 +1030,105 @@ public class PlatformerMotor2D : MonoBehaviour
     }
 
     ///<sumary>
-    // On slope that cannot walk motor will be forced to slip down.
+    /// On slope that cannot walk motor will be forced to slip down.
     ///</sumary>
     public bool IsForceSlipping()
     {
         return onSlope && Vector3.Dot(Vector3.up, slopeNormal) < _dotAllowedForSlopes;
     }
     ///<sumary>
-    // Given a game object return if this motor consider the object a moving platform.
+    /// Given a game object return if this motor consider the object a moving platform.
     ///</sumary>
     public bool IsMovingPlatform(GameObject obj)
     {
         return ((0x1 << obj.layer) & movingPlatformLayerMask) != 0;
     }
     ///<sumary>
-    // Given a game object return if this motor consider the object as static.
+    /// Given a game object return if this motor consider the object as static.
     ///</sumary>
     public bool IsStatic(GameObject obj)
     {
         return ((0x1 << obj.layer) & staticEnvLayerMask) != 0;
+    }
+    ///<sumary>
+    /// Is motor on moving platform
+    ///</sumary>
+    public bool IsOnPlatform() {
+        return _movingPlatformState.platform != null;
+    }
+
+    ///<sumary>
+    /// Given a game object return if this motor consider the object as grabbable.
+    /// object should not be falling, and in the same platform or grounded.
+    ///</sumary>
+    public bool IsGrabable(GameObject obj)
+    {
+        //maybe: ((0x1 << obj.layer) & grabbableLayerMask) != 0;
+
+        PlatformerMotor2D motor = obj.GetComponent<PlatformerMotor2D>();
+        if (motor)
+        {
+            return !motor.IsFalling() && !motor.IsFallingFast() && motor.IsOnPlatform() == IsOnPlatform();
+        }
+        return false;
+    }
+    ///<sumary>
+    /// Get what is colliding on the right direction
+    ///</sumary>
+    public GameObject GetRightCollider()
+    {
+        if (!_collidersUpAgainst[DIRECTION_RIGHT])
+        {
+            return null;
+        }
+        return _collidersUpAgainst[DIRECTION_RIGHT].gameObject;
+    }
+    ///<sumary>
+    /// Get what is colliding on the left direction
+    ///</sumary>
+    public GameObject GetLeftCollider()
+    {
+      if (!_collidersUpAgainst[DIRECTION_LEFT])
+      {
+          return null;
+      }
+      return _collidersUpAgainst[DIRECTION_LEFT].gameObject;
+    }
+    ///<sumary>
+    /// Is there something grabbed by the motor?
+    ///</sumary>
+    public bool IsGrabing()
+    {
+        return _grabState.target != null;
+    }
+    ///<sumary>
+    /// Grab an object, the object should be grabbable
+    ///</sumary>
+    public void Grab(GameObject obj)
+    {
+        if (IsGrabing())
+        {
+            Drop();
+        }
+
+        _grabState.target = obj;
+        _grabState.motor = obj.GetComponent<PlatformerMotor2D>();
+        _grabState.previousPos = transform.position;
+        _grabState.layer = (int) obj.layer;
+        obj.layer = (int) Mathf.Log((float) ignoreRaycastsLayerMask, 2);
+        _grabState.leftWallStuck = false;
+        _grabState.rightWallStuck = false;
+    }
+    ///<sumary>
+    /// Drop grabbed object
+    ///</sumary>
+    public void Drop()
+    {
+      _grabState.target.layer = _grabState.layer;
+      _grabState.layer = 0;
+      _grabState.target = null;
+      _grabState.motor = null;
+      collidingAgainst = CheckSurroundings(true);
     }
 
     #endregion
@@ -1187,9 +1272,20 @@ public class PlatformerMotor2D : MonoBehaviour
 
         public Vector2 previousPos;
         public CollidedSurface stuckToWall;
-        public bool isOnPlatform { get { return platform != null; } }
     }
     private MovingPlatformState _movingPlatformState = new MovingPlatformState();
+
+    private class GrabState
+    {
+        public GameObject target;
+        public PlatformerMotor2D motor;
+        public LayerMask layer;
+
+        public Vector3 previousPos;
+        public bool leftWallStuck;
+        public bool rightWallStuck;
+    }
+    private GrabState _grabState = new GrabState();
 
     // Used for environment checks and one way platforms
     private static RaycastHit2D[] _hits = new RaycastHit2D[STARTING_ARRAY_SIZE];
@@ -1208,7 +1304,7 @@ public class PlatformerMotor2D : MonoBehaviour
     private const int DIRECTION_LEFT = 2;
     private const int DIRECTION_RIGHT = 3;
 
-    private Collider2D _collider2D { get; set; }
+    public Collider2D _collider2D { get; private set; }
 
     private void Awake()
     {
@@ -1616,7 +1712,7 @@ public class PlatformerMotor2D : MonoBehaviour
             ChangeState(MotorState.Falling);
         }
 
-        if (_movingPlatformState.isOnPlatform)
+        if (IsOnPlatform())
         {
             _movingPlatformState.previousPos = _movingPlatformState.platform.position;
         }
@@ -1687,6 +1783,7 @@ public class PlatformerMotor2D : MonoBehaviour
         {
             UpdateState(true);
         }
+        UpdateGrab();
         // Phase Two: Update internal representation of velocity
         UpdateVelocity();
 
@@ -1702,6 +1799,42 @@ public class PlatformerMotor2D : MonoBehaviour
         _prevColliderBounds = _collider2D.bounds;
 
         return deltaTime;
+    }
+
+    private void UpdateGrab() {
+      if (!IsGrabing()) return;
+
+      // grab falling, or someone on platform the other not.
+      if ((_grabState.motor.IsFalling() || _grabState.motor.IsFallingFast()) ||
+          (_grabState.motor.IsOnPlatform() != IsOnPlatform())) {
+          Drop();
+          return;
+      }
+
+
+      Vector3 posDiff = transform.position - _grabState.previousPos;
+
+      if (posDiff.x == 0) {
+        _grabState.previousPos = transform.position;
+        return;
+      }
+
+      posDiff.y = 0;
+      posDiff.z = 0;
+
+      RaycastHit2D hit = _grabState.motor.GetClosestHit(_grabState.motor._collider2D.bounds.center,
+          posDiff.normalized, posDiff.magnitude, true, true);
+
+      if (hit.collider != null)
+      {
+          // cannot move...
+          // TODO this should call RaycastAndSeparate, or something like that
+          transform.position = _previousLoc;
+          return;
+      }
+
+      _grabState.target.transform.position += posDiff;
+      _grabState.previousPos = transform.position;
     }
 
     private bool UpdateMovingPlatform()
@@ -1722,7 +1855,7 @@ public class PlatformerMotor2D : MonoBehaviour
         }
 
         // Update location if on a moving platform.
-        if (!IsDashing() && _movingPlatformState.isOnPlatform)
+        if (!IsDashing() && IsOnPlatform())
         {
             Vector3 toNewPos = _movingPlatformState.platform.position - _movingPlatformState.previousPos;
             transform.position += toNewPos;
@@ -2133,7 +2266,7 @@ public class PlatformerMotor2D : MonoBehaviour
 
     private bool PressingIntoLeftWall()
     {
-        if (_movingPlatformState.isOnPlatform &&
+        if (IsOnPlatform() &&
             _movingPlatformState.stuckToWall == CollidedSurface.LeftWall &&
             normalizedXMovement < -wallInteractionThreshold)
         {
@@ -2145,7 +2278,7 @@ public class PlatformerMotor2D : MonoBehaviour
 
     private bool PressingIntoRightWall()
     {
-        if (_movingPlatformState.isOnPlatform &&
+        if (IsOnPlatform() &&
             _movingPlatformState.stuckToWall == CollidedSurface.RightWall &&
             normalizedXMovement > wallInteractionThreshold)
         {
@@ -2905,7 +3038,7 @@ public class PlatformerMotor2D : MonoBehaviour
             _collisionMask);
     }
 
-    private RaycastHit2D GetClosestHit(
+    public RaycastHit2D GetClosestHit(
         Vector2 origin,
         Vector3 direction,
         float distance,

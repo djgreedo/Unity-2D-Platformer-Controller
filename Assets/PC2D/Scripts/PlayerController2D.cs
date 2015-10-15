@@ -50,7 +50,7 @@ public class PlayerController2D : MonoBehaviour
 
         // Jump?
         // If you want to jump in ladders, leave it here, otherwise move it down
-        if (Input.GetButtonDown(PC2D.Input.JUMP))
+        if (Input.GetButtonDown(PC2D.Input.JUMP) && !_motor.IsGrabing())
         {
             _motor.Jump();
             _motor.DisableRestrictedArea();
@@ -116,7 +116,32 @@ public class PlayerController2D : MonoBehaviour
 
         if (Input.GetButtonDown(PC2D.Input.DASH))
         {
-            _motor.Dash();
+            if (!_motor.IsGrabing())
+            {
+                _motor.Dash();
+            }
+        }
+
+        // Grab staff
+        if (!Input.GetKey(PC2D.Input.GRAB) && _motor.IsGrabing())
+        {
+            _motor.Drop();
+        }
+
+        if (Input.GetKey(PC2D.Input.GRAB) && !_motor.IsGrabing())
+        {
+            // check right collider
+            GameObject obj = _motor.GetRightCollider();
+            if (obj && _motor.IsGrabable(obj))
+            {
+                _motor.Grab(obj);
+            }
+            // check left collider
+            obj = _motor.GetLeftCollider();
+            if (obj && _motor.IsGrabable(obj))
+            {
+                _motor.Grab(obj);
+            }
         }
     }
 }

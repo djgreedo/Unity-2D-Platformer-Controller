@@ -9,6 +9,7 @@ namespace PC2D
         public const string VERTICAL = "Vertical";
         public const string JUMP = "Jump";
         public const string DASH = "Fire1";
+        public const string GRAB = "left shift";
     }
 
     public class Globals

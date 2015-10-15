@@ -33,6 +33,7 @@ public class PlatformerMotor2DEditor : Editor
 
     #region Properties
     private readonly Property STATIC_ENV_LAYER_MASK = new Property("staticEnvLayerMask", "Static Environment Layer Mask");
+    private readonly Property IGNORE_RAYCASTS_LAYER_MASK = new Property("ignoreRaycastsLayerMask", "Ignore Raycasts Layer Mask");
     private readonly Property ENV_CHECK_DISTANCE = new Property("envCheckDistance", "Environment Check Distance");
     private readonly Property MIN_DISTANCE_FROM_ENV = new Property("minDistanceFromEnv", "Minimum Distance from Environment");
     private readonly Property NUM_OF_ITERATIONS = new Property("numOfIterations", "Number of Iterations");
@@ -141,6 +142,7 @@ public class PlatformerMotor2DEditor : Editor
         if (_showGeneral)
         {
             DisplayRegularField(STATIC_ENV_LAYER_MASK);
+            DisplayRegularField(IGNORE_RAYCASTS_LAYER_MASK);
             DisplayRegularField(ENV_CHECK_DISTANCE);
             DisplayRegularField(MIN_DISTANCE_FROM_ENV);
             DisplayRegularField(NUM_OF_ITERATIONS);
