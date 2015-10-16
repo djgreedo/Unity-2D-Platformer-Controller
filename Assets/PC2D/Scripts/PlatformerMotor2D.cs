@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using PC2D;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -7,6 +8,11 @@ using UnityEngine.Assertions;
 public class PlatformerMotor2D : MonoBehaviour
 {
     #region Public
+
+    /// <summary>
+    /// Plugins list
+    /// </summary>
+    public List<PlatformerMotor2DPlugin> plugins;
 
     /// <summary>
     /// The static environment check mask. This should only be environment that doesn't move.
@@ -1487,7 +1493,22 @@ public class PlatformerMotor2D : MonoBehaviour
             _iterationBounds[1] = b;
         }
 
-        MovePosition(_collider2D.bounds.center + (Vector3)_velocity * GetDeltaTime());
+        Vector3 currentSpeed = _velocity;
+
+        foreach(PlatformerMotor2DPlugin plugin in plugins)
+        {
+            Vector3 override_speed = new Vector3();
+            bool override_test = false;
+            plugin.GetCurrentVelocity(out override_speed, out override_test);
+            if (override_test)
+            {
+                currentSpeed = override_speed;
+                break;
+            }
+
+        }
+
+        MovePosition(_collider2D.bounds.center + (Vector3)currentSpeed * GetDeltaTime());
 
         if (numOfIterations == 1 ||
             (targetPos - _collider2D.bounds.center).sqrMagnitude < DISTANCE_TO_END_ITERATION * DISTANCE_TO_END_ITERATION)

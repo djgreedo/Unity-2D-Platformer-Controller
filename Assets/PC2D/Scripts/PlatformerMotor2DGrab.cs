@@ -7,25 +7,44 @@ using UnityEngine.Assertions;
 /// Plugin to allow motor to Grab other motors, the other motor should no be
 /// mobable just react to the enviroment like a box
 /// </summary>
-[RequireComponent(typeof(PlatformerMotor2D))]
-public class PlatformerMotor2DGrab : MonoBehaviour
+public class PlatformerMotor2DGrab : PlatformerMotor2DPlugin
 {
     #region Public
+
+    /// <summary>
+    /// Maximum horizontal speed of the motor while grabbing something
+    /// </summary>
+    public float grabbingSpeed = 5f;
+
+    //
+    // plugin
+    //
+    override public void GetCurrentVelocity(out Vector3 velocity, out bool handled)
+    {
+        handled = false;
+        velocity = Vector3.zero;
+
+        if (IsGrabing())
+        {
+            handled = true;
+            velocity.x = _motor.normalizedXMovement * grabbingSpeed;
+        }
+    }
 
     // init
     void Start()
     {
-        _motor = GetComponent<PlatformerMotor2D>();
-        onEnable();
     }
 
-    void onEnable()
+    override public void OnEnable()
     {
+        base.OnEnable();
         _motor.onAfterUpdateMotor += UpdateGrab;
     }
 
-    void onDisable()
+    override public void OnDisable()
     {
+        base.OnDisable();
         _motor.onAfterUpdateMotor -= UpdateGrab;
         if (IsGrabing())
         {
@@ -88,7 +107,6 @@ public class PlatformerMotor2DGrab : MonoBehaviour
 
     #region Private
 
-    private PlatformerMotor2D _motor;
     private GameObject _grabObject;
     private PlatformerMotor2D _grabMotor;
     private LayerMask _grabPreviousLayer;
