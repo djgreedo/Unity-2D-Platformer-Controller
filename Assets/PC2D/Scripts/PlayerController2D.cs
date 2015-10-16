@@ -7,6 +7,7 @@ using UnityEngine;
 public class PlayerController2D : MonoBehaviour
 {
     private PlatformerMotor2D _motor;
+    private PlatformerMotor2DGrab _grab;
     private bool _restored = true;
     private bool _enableOneWayPlatforms;
     private bool _oneWayPlatformsAreWalls;
@@ -15,6 +16,7 @@ public class PlayerController2D : MonoBehaviour
     void Start()
     {
         _motor = GetComponent<PlatformerMotor2D>();
+        _grab = GetComponent<PlatformerMotor2DGrab>();
     }
 
     // before enter en freedom state for ladders
@@ -38,6 +40,11 @@ public class PlayerController2D : MonoBehaviour
         _motor.oneWayPlatformsAreWalls = _oneWayPlatformsAreWalls;
     }
 
+    bool IsNotGrabing()
+    {
+        return _grab == null ? true : !_grab.IsGrabing();
+    }
+
     // Update is called once per frame
     void Update()
     {
@@ -50,7 +57,7 @@ public class PlayerController2D : MonoBehaviour
 
         // Jump?
         // If you want to jump in ladders, leave it here, otherwise move it down
-        if (Input.GetButtonDown(PC2D.Input.JUMP) && !_motor.IsGrabing())
+        if (Input.GetButtonDown(PC2D.Input.JUMP) && IsNotGrabing())
         {
             _motor.Jump();
             _motor.DisableRestrictedArea();
@@ -114,33 +121,33 @@ public class PlayerController2D : MonoBehaviour
             _motor.fallFast = false;
         }
 
-        if (Input.GetButtonDown(PC2D.Input.DASH))
+        if (Input.GetButtonDown(PC2D.Input.DASH) && IsNotGrabing())
         {
-            if (!_motor.IsGrabing())
-            {
-                _motor.Dash();
-            }
+            _motor.Dash();
         }
 
         // Grab staff
-        if (!Input.GetKey(PC2D.Input.GRAB) && _motor.IsGrabing())
+        if (_grab)
         {
-            _motor.Drop();
-        }
-
-        if (Input.GetKey(PC2D.Input.GRAB) && !_motor.IsGrabing())
-        {
-            // check right collider
-            GameObject obj = _motor.GetRightCollider();
-            if (obj && _motor.IsGrabable(obj))
+            if (!Input.GetKey(PC2D.Input.GRAB) && _grab.IsGrabing())
             {
-                _motor.Grab(obj);
+                _grab.Drop();
             }
-            // check left collider
-            obj = _motor.GetLeftCollider();
-            if (obj && _motor.IsGrabable(obj))
+
+            if (Input.GetKey(PC2D.Input.GRAB) && !_grab.IsGrabing())
             {
-                _motor.Grab(obj);
+                // check right collider
+                GameObject obj = _motor.GetRightCollider();
+                if (obj && _grab.IsGrabable(obj))
+                {
+                    _grab.Grab(obj);
+                }
+                // check left collider
+                obj = _motor.GetLeftCollider();
+                if (obj && _grab.IsGrabable(obj))
+                {
+                    _grab.Grab(obj);
+                }
             }
         }
     }

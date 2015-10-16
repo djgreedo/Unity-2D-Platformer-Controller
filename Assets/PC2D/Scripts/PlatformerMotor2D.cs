@@ -364,6 +364,11 @@ public class PlatformerMotor2D : MonoBehaviour
     public Action onSlippingEnd;
 
     /// <summary>
+    /// Delegate that notifies, motor is updated
+    /// </summary>
+    public Action onAfterUpdateMotor;
+
+    /// <summary>
     /// Internal gizmos moving platform debug rendering.
     /// </summary>
     public bool movingPlatformDebug;
@@ -1058,21 +1063,6 @@ public class PlatformerMotor2D : MonoBehaviour
     }
 
     ///<sumary>
-    /// Given a game object return if this motor consider the object as grabbable.
-    /// object should not be falling, and in the same platform or grounded.
-    ///</sumary>
-    public bool IsGrabable(GameObject obj)
-    {
-        //maybe: ((0x1 << obj.layer) & grabbableLayerMask) != 0;
-
-        PlatformerMotor2D motor = obj.GetComponent<PlatformerMotor2D>();
-        if (motor)
-        {
-            return !motor.IsFalling() && !motor.IsFallingFast() && motor.IsOnPlatform() == IsOnPlatform();
-        }
-        return false;
-    }
-    ///<sumary>
     /// Get what is colliding on the right direction
     ///</sumary>
     public GameObject GetRightCollider()
@@ -1094,41 +1084,10 @@ public class PlatformerMotor2D : MonoBehaviour
       }
       return _collidersUpAgainst[DIRECTION_LEFT].gameObject;
     }
-    ///<sumary>
-    /// Is there something grabbed by the motor?
-    ///</sumary>
-    public bool IsGrabing()
-    {
-        return _grabState.target != null;
-    }
-    ///<sumary>
-    /// Grab an object, the object should be grabbable
-    ///</sumary>
-    public void Grab(GameObject obj)
-    {
-        if (IsGrabing())
-        {
-            Drop();
-        }
 
-        _grabState.target = obj;
-        _grabState.motor = obj.GetComponent<PlatformerMotor2D>();
-        _grabState.previousPos = transform.position;
-        _grabState.layer = (int) obj.layer;
-        obj.layer = (int) Mathf.Log((float) ignoreRaycastsLayerMask, 2);
-        _grabState.leftWallStuck = false;
-        _grabState.rightWallStuck = false;
-    }
-    ///<sumary>
-    /// Drop grabbed object
-    ///</sumary>
-    public void Drop()
+    public void CheckSurroundingsAndUpdate(bool forceCheck)
     {
-      _grabState.target.layer = _grabState.layer;
-      _grabState.layer = 0;
-      _grabState.target = null;
-      _grabState.motor = null;
-      collidingAgainst = CheckSurroundings(true);
+        collidingAgainst = CheckSurroundings(forceCheck);
     }
 
     #endregion
@@ -1274,18 +1233,6 @@ public class PlatformerMotor2D : MonoBehaviour
         public CollidedSurface stuckToWall;
     }
     private MovingPlatformState _movingPlatformState = new MovingPlatformState();
-
-    private class GrabState
-    {
-        public GameObject target;
-        public PlatformerMotor2D motor;
-        public LayerMask layer;
-
-        public Vector3 previousPos;
-        public bool leftWallStuck;
-        public bool rightWallStuck;
-    }
-    private GrabState _grabState = new GrabState();
 
     // Used for environment checks and one way platforms
     private static RaycastHit2D[] _hits = new RaycastHit2D[STARTING_ARRAY_SIZE];
@@ -1783,7 +1730,6 @@ public class PlatformerMotor2D : MonoBehaviour
         {
             UpdateState(true);
         }
-        UpdateGrab();
         // Phase Two: Update internal representation of velocity
         UpdateVelocity();
 
@@ -1798,43 +1744,11 @@ public class PlatformerMotor2D : MonoBehaviour
 
         _prevColliderBounds = _collider2D.bounds;
 
+        if (onAfterUpdateMotor != null) {
+          onAfterUpdateMotor();
+        }
+
         return deltaTime;
-    }
-
-    private void UpdateGrab() {
-      if (!IsGrabing()) return;
-
-      // grab falling, or someone on platform the other not.
-      if ((_grabState.motor.IsFalling() || _grabState.motor.IsFallingFast()) ||
-          (_grabState.motor.IsOnPlatform() != IsOnPlatform())) {
-          Drop();
-          return;
-      }
-
-
-      Vector3 posDiff = transform.position - _grabState.previousPos;
-
-      if (posDiff.x == 0) {
-        _grabState.previousPos = transform.position;
-        return;
-      }
-
-      posDiff.y = 0;
-      posDiff.z = 0;
-
-      RaycastHit2D hit = _grabState.motor.GetClosestHit(_grabState.motor._collider2D.bounds.center,
-          posDiff.normalized, posDiff.magnitude, true, true);
-
-      if (hit.collider != null)
-      {
-          // cannot move...
-          // TODO this should call RaycastAndSeparate, or something like that
-          transform.position = _previousLoc;
-          return;
-      }
-
-      _grabState.target.transform.position += posDiff;
-      _grabState.previousPos = transform.position;
     }
 
     private bool UpdateMovingPlatform()
