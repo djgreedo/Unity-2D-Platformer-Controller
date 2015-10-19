@@ -3,6 +3,10 @@ using PC2D;
 using UnityEngine;
 using UnityEngine.Assertions;
 
+// TODO slope logic must be speparated from the motor, so can be used here
+// TODO animations
+// TODO weight affects speed ?
+
 /// <summary>
 /// Plugin to allow motor to Grab other motors, the other motor should no be
 /// mobable just react to the enviroment like a box
@@ -115,8 +119,11 @@ public class PlatformerMotor2DGrab : PlatformerMotor2DPlugin
     private void UpdateGrab() {
       if (!IsGrabing()) return;
 
-      // grab falling, or someone on platform the other not.
-      if ((_grabMotor.IsFalling() || _grabMotor.IsFallingFast()) ||
+      // grab/player falling, or someone on platform the other not.
+      if (_grabMotor.IsFalling() ||
+          _grabMotor.IsFallingFast() ||
+          _motor.IsFalling() ||
+          _motor.IsFallingFast() ||
           (_grabMotor.IsOnPlatform() != _motor.IsOnPlatform())) {
           Drop();
           return;

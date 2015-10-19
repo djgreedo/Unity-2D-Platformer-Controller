@@ -3,6 +3,11 @@ using PC2D;
 using UnityEngine;
 using UnityEngine.Assertions;
 
+// TODO AllowState, ask all plugin if it's possible to change the state
+// useful to deny jumping while X
+// TODO move Dash to plugin
+// TODO move Jump to plugin
+
 /// <summary>
 /// Plugin to allow motor to Grab other motors, the other motor should no be
 /// mobable just react to the enviroment like a box
