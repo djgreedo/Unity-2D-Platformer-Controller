@@ -11,6 +11,7 @@ using UnityEngine.Assertions;
 /// Plugin to allow motor to Grab other motors, the other motor should no be
 /// mobable just react to the enviroment like a box
 /// </summary>
+[RequireComponent(typeof(PlatformerMotor2D))]
 public class PlatformerMotor2DGrab : PlatformerMotor2DPlugin
 {
     #region Public
@@ -23,16 +24,16 @@ public class PlatformerMotor2DGrab : PlatformerMotor2DPlugin
     //
     // plugin
     //
-    override public void GetCurrentVelocity(Vector3 currentVelocity, out Vector3 velocity, out bool handled)
+    override public PlatformerMotor2DPlugin.Action GetCurrentVelocity(Vector3 currentVelocity, out Vector3 velocity)
     {
-        handled = false;
         velocity = Vector3.zero;
 
         if (IsGrabing())
         {
-            handled = true;
             velocity.x = _motor.normalizedXMovement * grabbingSpeed;
+            return PlatformerMotor2DPlugin.Action.Handled;
         }
+        return PlatformerMotor2DPlugin.Action.Continue;
     }
 
     // init
@@ -48,12 +49,12 @@ public class PlatformerMotor2DGrab : PlatformerMotor2DPlugin
 
     override public void OnDisable()
     {
-        base.OnDisable();
         _motor.onAfterUpdateMotor -= UpdateGrab;
         if (IsGrabing())
         {
             Drop();
         }
+        base.OnDisable();
     }
 
     ///<sumary>
@@ -67,7 +68,9 @@ public class PlatformerMotor2DGrab : PlatformerMotor2DPlugin
         PlatformerMotor2D target = obj.GetComponent<PlatformerMotor2D>();
         if (target)
         {
-            return !target.IsFalling() && !target.IsFallingFast() && target.IsOnPlatform() == _motor.IsOnPlatform();
+            return !target.IsFalling() &&
+                   !target.IsFallingFast() &&
+                   target.IsOnPlatform() == _motor.IsOnPlatform();
         }
         return false;
     }

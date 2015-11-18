@@ -15,10 +15,17 @@ using UnityEngine.Assertions;
 [RequireComponent(typeof(PlatformerMotor2D))]
 public class PlatformerMotor2DPlugin : MonoBehaviour
 {
-    virtual public void GetCurrentVelocity(out Vector3 velocity, out bool handled)
+    public enum Action {
+      Modified, // modified, continue
+      Continue, // not modified, continue
+      Handled, // modified stop
+      Stop // not modified, but stop
+    };
+
+    virtual public Action GetCurrentVelocity(Vector3 currentVelocity, out Vector3 velocity)
     {
-        handled = false;
         velocity = Vector3.zero;
+        return Action.Continue;
     }
 
     virtual public void OnEnable()
@@ -30,6 +37,7 @@ public class PlatformerMotor2DPlugin : MonoBehaviour
     virtual public void OnDisable()
     {
         _motor.plugins.Remove(this);
+        _motor = null;
     }
 
     protected PlatformerMotor2D _motor;

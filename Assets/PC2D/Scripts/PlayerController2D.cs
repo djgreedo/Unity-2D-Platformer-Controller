@@ -8,6 +8,7 @@ public class PlayerController2D : MonoBehaviour
 {
     private PlatformerMotor2D _motor;
     private PlatformerMotor2DGrab _grab;
+    private PlatformerMotor2DWater _water;
     private bool _restored = true;
     private bool _enableOneWayPlatforms;
     private bool _oneWayPlatformsAreWalls;
@@ -17,6 +18,7 @@ public class PlayerController2D : MonoBehaviour
     {
         _motor = GetComponent<PlatformerMotor2D>();
         _grab = GetComponent<PlatformerMotor2DGrab>();
+        _water = GetComponent<PlatformerMotor2DWater>();
     }
 
     // before enter en freedom state for ladders
@@ -45,6 +47,16 @@ public class PlayerController2D : MonoBehaviour
         return _grab == null ? true : !_grab.IsGrabing();
     }
 
+    bool IsOnWater()
+    {
+        return _water == null ? false : _water.IsOnWater();
+    }
+
+    bool CanJump()
+    {
+        return IsNotGrabing() || IsOnWater();
+    }
+
     // Update is called once per frame
     void Update()
     {
@@ -57,9 +69,15 @@ public class PlayerController2D : MonoBehaviour
 
         // Jump?
         // If you want to jump in ladders, leave it here, otherwise move it down
-        if (Input.GetButtonDown(PC2D.Input.JUMP) && IsNotGrabing())
+        if (Input.GetButtonDown(PC2D.Input.JUMP) && CanJump())
         {
-            _motor.Jump();
+            if (IsOnWater())
+            {
+              _motor.ForceJump();
+            } else
+            {
+              _motor.Jump();
+            }
             _motor.DisableRestrictedArea();
         }
 

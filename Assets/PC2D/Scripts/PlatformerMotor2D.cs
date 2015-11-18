@@ -1495,18 +1495,26 @@ public class PlatformerMotor2D : MonoBehaviour
 
         Vector3 currentSpeed = _velocity;
 
+        PlatformerMotor2DPlugin.Action act;
         foreach(PlatformerMotor2DPlugin plugin in plugins)
         {
             Vector3 override_speed = new Vector3();
-            bool override_test = false;
-            plugin.GetCurrentVelocity(currentSpeed, out override_speed, out override_test);
-            if (override_test)
-            {
-                currentSpeed = override_speed;
-                _velocity = override_speed;
-                break;
+            act = plugin.GetCurrentVelocity(currentSpeed, out override_speed);
+            switch(act) {
+            case PlatformerMotor2DPlugin.Action.Modified:
+            case PlatformerMotor2DPlugin.Action.Handled:
+              currentSpeed = override_speed;
+              _velocity = override_speed;
+              break;
+            case PlatformerMotor2DPlugin.Action.Continue:
+            case PlatformerMotor2DPlugin.Action.Stop:
+              break;
             }
 
+            if (act == PlatformerMotor2DPlugin.Action.Handled &&
+                act == PlatformerMotor2DPlugin.Action.Stop) {
+              break;
+            }
         }
 
         MovePosition(_collider2D.bounds.center + (Vector3)currentSpeed * GetDeltaTime());
@@ -2684,7 +2692,7 @@ public class PlatformerMotor2D : MonoBehaviour
         }
     }
 
-    private float Accelerate(float speed, float acceleration, float limit)
+    public float Accelerate(float speed, float acceleration, float limit)
     {
         // acceleration can be negative or positive to note acceleration in that direction.
         speed += acceleration * GetDeltaTime();
@@ -2707,7 +2715,7 @@ public class PlatformerMotor2D : MonoBehaviour
         return speed;
     }
 
-    private float Decelerate(float speed, float deceleration, float limit)
+    public float Decelerate(float speed, float deceleration, float limit)
     {
         // deceleration is always positive but assumed to take the velocity backwards.
         if (speed < 0)
