@@ -1499,10 +1499,11 @@ public class PlatformerMotor2D : MonoBehaviour
         {
             Vector3 override_speed = new Vector3();
             bool override_test = false;
-            plugin.GetCurrentVelocity(out override_speed, out override_test);
+            plugin.GetCurrentVelocity(currentSpeed, out override_speed, out override_test);
             if (override_test)
             {
                 currentSpeed = override_speed;
+                _velocity = override_speed;
                 break;
             }
 

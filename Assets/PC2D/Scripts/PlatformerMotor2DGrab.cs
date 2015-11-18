@@ -23,7 +23,7 @@ public class PlatformerMotor2DGrab : PlatformerMotor2DPlugin
     //
     // plugin
     //
-    override public void GetCurrentVelocity(out Vector3 velocity, out bool handled)
+    override public void GetCurrentVelocity(Vector3 currentVelocity, out Vector3 velocity, out bool handled)
     {
         handled = false;
         velocity = Vector3.zero;
